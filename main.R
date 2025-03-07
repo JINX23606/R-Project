@@ -32,8 +32,8 @@ comparison <- data.frame(
 )
 
 ggplot(comparison, aes(x = Actual, y = Predicted)) +
-  geom_point(color = "blue", alpha = 0.6) +  # จุดสีฟ้า
-  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +  # เส้นอ้างอิง y = x
+  geom_point(color = "blue", alpha = 0.6) +  
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") + 
   labs(
     title = "Predicted vs Actual Quality of Sleep",
     x = "Actual Quality of Sleep",
