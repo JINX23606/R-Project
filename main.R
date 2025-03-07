@@ -1,61 +1,45 @@
-install.packages("ggplot2")
-install.packages("randomForest")
-install.packages("rpart")
-install.packages("rpart.plot")
+library(caret)
 library(ggplot2)
-library(randomForest)
-library(rpart)
-library(rpart.plot)
+sleep_data <- read.csv("sleep.csv")
+colSums(is.na(sleep_data))
+summary(sleep_data)
+str(sleep_data)
+#Dummy Variables
+sleep_data$Gender <- ifelse(sleep_data$Gender == "Male", 1, 0)
+sleep_data$Occupation <- factor(sleep_data$Occupation) 
+sleep_data <- cbind(sleep_data, model.matrix(~ Occupation - 1, data = sleep_data))
 
-train <- read.csv("train.csv")
-test <- read.csv("test.csv")
+set.seed(123)
 
-str(train)
-summary(train)
+train_index <- createDataPartition(sleep_data$Quality.of.Sleep, p = 0.8, list = FALSE)
+train_data <- sleep_data[train_index, ]
+test_data <- sleep_data[-train_index, ]
 
-table(train$Survived)
-prop.table(table(train$Survived))
 
-table(train$Sex, train$Survived)
-prop.table(table(train$Sex, train$Survived), margin = 1) 
-
-table(train$Pclass, train$Survived)
-prop.table(table(train$Pclass, train$Survived), margin = 1)
-
-train$Age[is.na(train$Age)] <- mean(train$Age, na.rm = TRUE)
-train$Embarked[is.na(train$Embarked)] <- "S"  
-
-# แปลงตัวแปรให้เป็น Factor
-train$Survived <- as.factor(train$Survived)
-train$Pclass <- as.factor(train$Pclass)
-train$Sex <- as.factor(train$Sex)
-train$Embarked <- as.factor(train$Embarked)
-
-# สร้างโมเดล Logistic Regression
-model <- glm(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked,
-             data = train, family = binomial())
-
-# ดูสรุปผล
+model <- lm(Quality.of.Sleep ~ Sleep.Duration + Physical.Activity.Level+Occupation + Stress.Level + Daily.Steps , 
+            data = train_data)
 summary(model)
 
-ggplot(train, aes(x = factor(Survived), fill = factor(Survived))) +
-  geom_bar() +
-  scale_fill_manual(values = c("red", "green")) +
-  labs(title = "Survival Count", x = "Survived", y = "Count") +
+
+predictions <- predict(model, newdata = test_data)
+
+rmse <- sqrt(mean((predictions - test_data$Quality.of.Sleep)^2))
+print(paste("RMSE:", rmse))
+
+comparison <- data.frame(
+  Actual = test_data$Quality.of.Sleep,
+  Predicted = predictions
+)
+
+ggplot(comparison, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "blue", alpha = 0.6) +  # จุดสีฟ้า
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +  # เส้นอ้างอิง y = x
+  labs(
+    title = "Predicted vs Actual Quality of Sleep",
+    x = "Actual Quality of Sleep",
+    y = "Predicted Quality of Sleep"
+  ) +
   theme_minimal()
 
-ggplot(train, aes(x = Sex, fill = factor(Survived))) +
-  geom_bar(position = "fill") +  # Normalized to show proportion
-  scale_fill_manual(values = c("red", "green")) +
-  labs(title = "Survival by Gender", x = "Sex", y = "Proportion") +
-  theme_minimal()
 
-ggplot(train, aes(x = Age, fill = factor(Survived))) +
-  geom_histogram(bins = 30, alpha = 0.6, position = "identity") +
-  scale_fill_manual(values = c("red", "green")) +
-  labs(title = "Age Distribution", x = "Age", y = "Count") +
-  theme_minimal()
 
-dt_model <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, 
-                  data = train, method = "class")
-rpart.plot(dt_model, type = 3, extra = 102, fallen.leaves = TRUE)
